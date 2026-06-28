@@ -1,0 +1,44 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  colorPrimario?: string;
+  colorSecundario?: string;
+  colorTexto?: string;
+  fuenteTitulos?: string;
+  fuenteCuerpo?: string;
+}
+
+const { title, colorPrimario, colorSecundario, colorTexto, fuenteTitulos, fuenteCuerpo } = Astro.props;
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {fuenteTitulos && <link href={`https://fonts.googleapis.com/css2?family=${fuenteTitulos.replace(' ', '+')}&display=swap`} rel="stylesheet" />}
+    {fuenteCuerpo && fuenteCuerpo !== fuenteTitulos && <link href={`https://fonts.googleapis.com/css2?family=${fuenteCuerpo.replace(' ', '+')}&display=swap`} rel="stylesheet" />}
+    <style define:vars={{ colorPrimario: colorPrimario ?? '#1a1a2e', colorSecundario: colorSecundario ?? '#16213e', colorTexto: colorTexto ?? '#eaeaea', fuenteTitulos: fuenteTitulos ?? 'system-ui', fuenteCuerpo: fuenteCuerpo ?? 'system-ui' }}>
+      :root {
+        --color-primario: var(--colorPrimario);
+        --color-secundario: var(--colorSecundario);
+        --color-texto: var(--colorTexto);
+        --fuente-titulos: var(--fuenteTitulos);
+        --fuente-cuerpo: var(--fuenteCuerpo);
+      }
+      body {
+        background-color: var(--color-primario);
+        color: var(--color-texto);
+        font-family: var(--fuente-cuerpo), system-ui, sans-serif;
+      }
+      h1, h2, h3 {
+        font-family: var(--fuente-titulos), system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen">
+    <slot />
+  </body>
+</html>

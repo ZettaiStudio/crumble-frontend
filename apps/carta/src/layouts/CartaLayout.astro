@@ -3,42 +3,58 @@ import '../styles/global.css';
 
 interface Props {
   title: string;
-  colorPrimario?: string;
-  colorSecundario?: string;
-  colorTexto?: string;
   fuenteTitulos?: string;
   fuenteCuerpo?: string;
 }
 
-const { title, colorPrimario, colorSecundario, colorTexto, fuenteTitulos, fuenteCuerpo } = Astro.props;
+const { title, fuenteTitulos = 'Playfair Display', fuenteCuerpo = 'Inter' } = Astro.props;
 ---
 
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#FAF9F6" />
     <title>{title}</title>
-    {fuenteTitulos && <link href={`https://fonts.googleapis.com/css2?family=${fuenteTitulos.replace(' ', '+')}&display=swap`} rel="stylesheet" />}
-    {fuenteCuerpo && fuenteCuerpo !== fuenteTitulos && <link href={`https://fonts.googleapis.com/css2?family=${fuenteCuerpo.replace(' ', '+')}&display=swap`} rel="stylesheet" />}
-    <style define:vars={{ colorPrimario: colorPrimario ?? '#1a1a2e', colorSecundario: colorSecundario ?? '#16213e', colorTexto: colorTexto ?? '#eaeaea', fuenteTitulos: fuenteTitulos ?? 'system-ui', fuenteCuerpo: fuenteCuerpo ?? 'system-ui' }}>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href={`https://fonts.googleapis.com/css2?family=${fuenteTitulos.replace(/ /g, '+')}:wght@400;600;700&family=${fuenteCuerpo.replace(/ /g, '+')}:wght@300;400;500;600&display=swap`} rel="stylesheet" />
+    <style define:vars={{ fuenteTitulos, fuenteCuerpo }}>
       :root {
-        --color-primario: var(--colorPrimario);
-        --color-secundario: var(--colorSecundario);
-        --color-texto: var(--colorTexto);
-        --fuente-titulos: var(--fuenteTitulos);
-        --fuente-cuerpo: var(--fuenteCuerpo);
+        --font-display: var(--fuenteTitulos), 'Georgia', serif;
+        --font-body: var(--fuenteCuerpo), system-ui, sans-serif;
+        --cream: #FAF9F6;
+        --white: #FFFFFF;
+        --gold: #C4956A;
+        --gold-light: #E8D5C0;
+        --gold-dark: #8B6914;
+        --text: #2D2D2D;
+        --text-light: #777777;
+        --text-muted: #AAAAAA;
+        --divider: #E8E5E0;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+        --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+        --shadow-lg: 0 10px 30px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+        --radius: 16px;
+        --radius-sm: 10px;
       }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
       body {
-        background-color: var(--color-primario);
-        color: var(--color-texto);
-        font-family: var(--fuente-cuerpo), system-ui, sans-serif;
+        background-color: var(--cream);
+        color: var(--text);
+        font-family: var(--font-body);
+        font-weight: 400;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
       }
-      h1, h2, h3 {
-        font-family: var(--fuente-titulos), system-ui, sans-serif;
+      h1, h2, h3, h4 {
+        font-family: var(--font-display);
+        font-weight: 600;
+        line-height: 1.2;
       }
     </style>
   </head>
-  <body class="min-h-screen">
+  <body>
     <slot />
   </body>
 </html>

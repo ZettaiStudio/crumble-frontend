@@ -4,86 +4,212 @@ import CartaLayout from '../../layouts/CartaLayout.astro';
 const API_URL = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5000/api';
 const { id } = Astro.params;
 const token = Astro.url.searchParams.get('t');
-
 if (!token) return Astro.redirect('/');
 
-const platoRes = await fetch(`${API_URL}/platos/${id}`);
+const [platoRes, accesoRes] = await Promise.all([
+  fetch(`${API_URL}/platos/${id}`),
+  fetch(`${API_URL}/qr/validar/${token}`),
+]);
 if (!platoRes.ok) return Astro.redirect(`/carta?t=${token}`);
 const plato = await platoRes.json();
-
-const accesoRes = await fetch(`${API_URL}/qr/validar/${token}`);
 const acceso = await accesoRes.json();
 if (!acceso.valido) return Astro.redirect('/?error=token-invalido');
 
 const personalizacionRes = await fetch(`${API_URL}/personalizacion-carta/${acceso.sucursalId}`);
 const personalizacion = await personalizacionRes.json();
+
+const formatPrice = (n: number) => n.toLocaleString('es-AR');
 ---
 
 <CartaLayout
   title={plato.nombre}
-  colorPrimario={personalizacion.colorPrimario}
-  colorSecundario={personalizacion.colorSecundario}
-  colorTexto={personalizacion.colorTexto}
-  fuenteTitulos={personalizacion.fuenteTitulos}
-  fuenteCuerpo={personalizacion.fuenteCuerpo}
+  fuenteTitulos={personalizacion.fuenteTitulos ?? 'Playfair Display'}
+  fuenteCuerpo={personalizacion.fuenteCuerpo ?? 'Inter'}
 >
-  <div class="max-w-lg mx-auto">
-    <!-- Imagen principal -->
-    {plato.imagenUrl && (
-      <div class="relative">
-        <img src={plato.imagenUrl} alt={plato.nombre} class="w-full h-64 object-cover" />
-        <a href={`/carta?t=${token}`} class="absolute top-4 left-4 rounded-full w-10 h-10 flex items-center justify-center bg-black/50 text-white">
-          &larr;
-        </a>
-      </div>
-    )}
+  <div class="detail">
+    <!-- Image -->
+    <div class="detail-hero">
+      {plato.imagenUrl && <img src={plato.imagenUrl} alt={plato.nombre} class="detail-img" />}
+      <a href={`/carta?t=${token}`} class="back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      </a>
+    </div>
 
-    {!plato.imagenUrl && (
-      <div class="p-4">
-        <a href={`/carta?t=${token}`} class="opacity-60">&larr; Volver a la carta</a>
-      </div>
-    )}
-
-    <div class="px-4 py-6">
-      <!-- Nombre y precio -->
-      <div class="flex justify-between items-start mb-4">
-        <h1 class="text-2xl font-bold">{plato.nombre}</h1>
-        <span class="text-2xl font-bold">${plato.precioActual.toLocaleString()}</span>
-      </div>
-
+    <div class="detail-body">
       <!-- Badges -->
-      <div class="flex gap-2 mb-4 flex-wrap">
-        {plato.categoria && (
-          <span class="px-2 py-1 rounded-full text-xs" style="background-color: var(--color-secundario);">{plato.categoria}</span>
-        )}
-        {plato.esSugerenciaDelDia && (
-          <span class="px-2 py-1 rounded-full text-xs bg-yellow-600/30 text-yellow-300">Sugerencia del día</span>
-        )}
-        {plato.esSugerenciaDelChef && (
-          <span class="px-2 py-1 rounded-full text-xs bg-purple-600/30 text-purple-300">Sugerencia del chef</span>
-        )}
-        {!plato.esDisponible && (
-          <span class="px-2 py-1 rounded-full text-xs bg-red-600/30 text-red-300">Agotado</span>
-        )}
+      <div class="detail-badges">
+        {plato.categoria && <span class="badge badge-cat">{plato.categoria}</span>}
+        {plato.esSugerenciaDelDia && <span class="badge badge-dia">Sugerencia del Día</span>}
+        {plato.esSugerenciaDelChef && <span class="badge badge-chef">Del Chef</span>}
       </div>
 
-      <!-- Descripción -->
-      <p class="opacity-80 mb-6">{plato.descripcion}</p>
+      <!-- Title + Price -->
+      <h1 class="detail-title">{plato.nombre}</h1>
+      <div class="detail-price">${formatPrice(plato.precioActual)}</div>
 
-      <!-- Datos nutricionales -->
+      <!-- Ornament -->
+      <div class="detail-ornament">
+        <span class="orn-line"></span>
+        <span class="orn-dot">&#9670;</span>
+        <span class="orn-line"></span>
+      </div>
+
+      <!-- Description -->
+      <p class="detail-desc">{plato.descripcion}</p>
+
+      <!-- Nutritional info -->
       {plato.datosNutricionales && (
-        <div class="rounded-lg p-4 mb-6" style="background-color: var(--color-secundario);">
-          <h3 class="font-bold text-sm mb-2">Información nutricional</h3>
-          <p class="text-sm opacity-70">{plato.datosNutricionales}</p>
+        <div class="nutri-card">
+          <h4 class="nutri-title">Información nutricional</h4>
+          <div class="nutri-pills">
+            {plato.datosNutricionales.split('·').map((item: string) => (
+              <span class="nutri-pill">{item.trim()}</span>
+            ))}
+          </div>
         </div>
       )}
 
-      <!-- Historial de precios (último) -->
+      <!-- Price history hint -->
       {plato.historialPrecios.length > 1 && (
-        <p class="text-xs opacity-40">
-          Precio anterior: ${plato.historialPrecios[plato.historialPrecios.length - 2].precio.toLocaleString()}
-        </p>
+        <p class="price-prev">Precio anterior: ${formatPrice(plato.historialPrecios[plato.historialPrecios.length - 2].precio)}</p>
       )}
     </div>
   </div>
+
+  <style>
+    .detail {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+    .detail-hero {
+      position: relative;
+      height: 340px;
+      background: var(--divider);
+    }
+    .detail-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .back-btn {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(8px);
+      border-radius: 50%;
+      color: var(--text);
+      text-decoration: none;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.15s;
+    }
+    .back-btn:hover { transform: scale(1.05); }
+    .back-btn svg { width: 20px; height: 20px; }
+
+    .detail-body {
+      padding: 28px 24px 60px;
+      margin-top: -24px;
+      background: var(--cream);
+      border-radius: 24px 24px 0 0;
+      position: relative;
+    }
+
+    .detail-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 16px;
+    }
+    .badge-cat {
+      background: var(--divider);
+      color: var(--text-light);
+    }
+    .badge-dia {
+      background: #FFF3E0;
+      color: #E65100;
+    }
+    .badge-chef {
+      background: #F3E5F5;
+      color: #7B1FA2;
+    }
+
+    .detail-title {
+      font-size: 28px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .detail-price {
+      font-family: var(--font-display);
+      font-size: 24px;
+      color: var(--gold);
+      margin-bottom: 20px;
+    }
+
+    .detail-ornament {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .orn-line { flex: 1; height: 1px; background: var(--divider); }
+    .orn-dot { color: var(--gold-light); font-size: 8px; }
+
+    .detail-desc {
+      font-size: 16px;
+      line-height: 1.7;
+      color: var(--text-light);
+      margin-bottom: 24px;
+    }
+
+    .nutri-card {
+      background: var(--white);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 20px;
+    }
+    .nutri-title {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .nutri-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .nutri-pill {
+      font-size: 13px;
+      color: var(--text);
+      background: var(--cream);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .price-prev {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-decoration: line-through;
+    }
+  </style>
 </CartaLayout>

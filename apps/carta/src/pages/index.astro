@@ -1,12 +1,33 @@
 ---
 import CartaLayout from '../layouts/CartaLayout.astro';
+const error = Astro.url.searchParams.get('error');
 ---
 
 <CartaLayout title="Crumble">
-  <div class="flex items-center justify-center min-h-screen">
-    <div class="text-center p-8">
-      <h1 class="text-4xl font-bold mb-4">Crumble</h1>
-      <p class="text-lg opacity-80">Escaneá el QR de tu mesa para ver la carta</p>
+  <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;">
+    <div style="text-align:center;max-width:320px;">
+      <div style="margin-bottom:32px;">
+        <div style="display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:24px;">
+          <span style="display:block;width:40px;height:1px;background:var(--gold-light);"></span>
+          <span style="color:var(--gold);font-size:8px;">&#9670;</span>
+          <span style="display:block;width:40px;height:1px;background:var(--gold-light);"></span>
+        </div>
+        <h1 style="font-size:42px;margin-bottom:8px;">Crumble</h1>
+        <p style="font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--text-muted);">Carta Digital</p>
+      </div>
+      <p style="font-size:16px;color:var(--text-light);line-height:1.6;margin-bottom:24px;">
+        Escaneá el código QR de tu mesa para acceder a la carta del restaurante.
+      </p>
+      {error === 'token-invalido' && (
+        <p style="font-size:14px;color:#C62828;background:#FFEBEE;padding:12px 16px;border-radius:10px;">
+          El código QR expiró o no es válido. Pedile al mozo uno nuevo.
+        </p>
+      )}
+      <div style="display:flex;align-items:center;gap:12px;justify-content:center;margin-top:32px;">
+        <span style="display:block;width:40px;height:1px;background:var(--gold-light);"></span>
+        <span style="color:var(--gold);font-size:8px;">&#9670;</span>
+        <span style="display:block;width:40px;height:1px;background:var(--gold-light);"></span>
+      </div>
     </div>
   </div>
 </CartaLayout>

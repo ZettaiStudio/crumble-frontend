@@ -1,0 +1,244 @@
+---
+import CartaLayout from '../layouts/CartaLayout.astro';
+
+const API_URL = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5000/api';
+const token = Astro.url.searchParams.get('t');
+
+if (!token) {
+  return Astro.redirect('/');
+}
+
+const accesoRes = await fetch(`${API_URL}/qr/validar/${token}`);
+const acceso = await accesoRes.json();
+
+if (!acceso.valido) {
+  return Astro.redirect('/?error=token-invalido');
+}
+
+const sucursalId = acceso.sucursalId;
+
+const [platosRes, ofertasRes, conveniosRes, personalizacionRes, avisosRes] = await Promise.all([
+  fetch(`${API_URL}/platos/buscar/${sucursalId}?soloDisponibles=true`),
+  fetch(`${API_URL}/ofertas/por-sucursal/${sucursalId}`),
+  fetch(`${API_URL}/convenios-tarjeta/por-sucursal/${sucursalId}`),
+  fetch(`${API_URL}/personalizacion-carta/${sucursalId}`),
+  fetch(`${API_URL}/avisos/por-sucursal/${sucursalId}`),
+]);
+
+const platos = await platosRes.json();
+const ofertas = (await ofertasRes.json()).filter((o: any) => o.esActiva);
+const convenios = (await conveniosRes.json()).filter((c: any) => c.esActivo);
+const personalizacion = await personalizacionRes.json();
+const avisos = (await avisosRes.json()).filter((a: any) => a.esActivo);
+
+const categorias = [...new Set(platos.map((p: any) => p.categoria).filter(Boolean))];
+---
+
+<CartaLayout
+  title="Carta"
+  colorPrimario={personalizacion.colorPrimario}
+  colorSecundario={personalizacion.colorSecundario}
+  colorTexto={personalizacion.colorTexto}
+  fuenteTitulos={personalizacion.fuenteTitulos}
+  fuenteCuerpo={personalizacion.fuenteCuerpo}
+>
+  <div class="max-w-lg mx-auto px-4 py-6">
+    <!-- Logo -->
+    {personalizacion.logoUrl && (
+      <div class="text-center mb-6">
+        <img src={personalizacion.logoUrl} alt="Logo" class="mx-auto max-h-20 object-contain" />
+      </div>
+    )}
+
+    <!-- Avisos -->
+    {avisos.length > 0 && (
+      <div class="mb-6 space-y-2">
+        {avisos.map((aviso: any) => (
+          <div class="rounded-lg p-3 text-sm text-center" style="background-color: var(--color-secundario);">
+            {aviso.contenido}
+          </div>
+        ))}
+      </div>
+    )}
+
+    <!-- Buscador -->
+    <div class="mb-6">
+      <input
+        type="search"
+        id="buscar"
+        placeholder="Buscar platos..."
+        class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 placeholder:opacity-50 focus:outline-none focus:border-white/40"
+      />
+    </div>
+
+    <!-- Filtros por categoría -->
+    {categorias.length > 0 && (
+      <div class="flex gap-2 overflow-x-auto mb-6 pb-2">
+        <button class="categoria-btn active px-3 py-1 rounded-full text-sm whitespace-nowrap" style="background-color: var(--color-secundario);" data-cat="todas">
+          Todas
+        </button>
+        {categorias.map((cat: any) => (
+          <button class="categoria-btn px-3 py-1 rounded-full text-sm whitespace-nowrap opacity-60" style="background-color: var(--color-secundario);" data-cat={cat}>
+            {cat}
+          </button>
+        ))}
+      </div>
+    )}
+
+    <!-- Sugerencias del día -->
+    {platos.filter((p: any) => p.esSugerenciaDelDia).length > 0 && (
+      <div class="mb-6">
+        <h2 class="text-xl font-bold mb-3">Sugerencia del día</h2>
+        <div class="space-y-3">
+          {platos.filter((p: any) => p.esSugerenciaDelDia).map((plato: any) => (
+            <a href={`/plato/${plato.id}?t=${token}`} class="block rounded-lg overflow-hidden" style="background-color: var(--color-secundario);">
+              {plato.imagenUrl && <img src={plato.imagenUrl} alt={plato.nombre} class="w-full h-40 object-cover" />}
+              <div class="p-3">
+                <div class="flex justify-between items-start">
+                  <h3 class="font-bold">{plato.nombre}</h3>
+                  <span class="font-bold">${plato.precioActual.toLocaleString()}</span>
+                </div>
+                <p class="text-sm opacity-70 mt-1">{plato.descripcion}</p>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- Sugerencias del chef -->
+    {platos.filter((p: any) => p.esSugerenciaDelChef).length > 0 && (
+      <div class="mb-6">
+        <h2 class="text-xl font-bold mb-3">Sugerencia del chef</h2>
+        <div class="space-y-3">
+          {platos.filter((p: any) => p.esSugerenciaDelChef).map((plato: any) => (
+            <a href={`/plato/${plato.id}?t=${token}`} class="block rounded-lg overflow-hidden" style="background-color: var(--color-secundario);">
+              {plato.imagenUrl && <img src={plato.imagenUrl} alt={plato.nombre} class="w-full h-40 object-cover" />}
+              <div class="p-3">
+                <div class="flex justify-between items-start">
+                  <h3 class="font-bold">{plato.nombre}</h3>
+                  <span class="font-bold">${plato.precioActual.toLocaleString()}</span>
+                </div>
+                <p class="text-sm opacity-70 mt-1">{plato.descripcion}</p>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- Todos los platos -->
+    <div class="mb-6">
+      <h2 class="text-xl font-bold mb-3">Carta</h2>
+      <div class="space-y-3" id="lista-platos">
+        {platos.map((plato: any) => (
+          <a href={`/plato/${plato.id}?t=${token}`} class="plato-card block rounded-lg overflow-hidden" style="background-color: var(--color-secundario);" data-nombre={plato.nombre.toLowerCase()} data-descripcion={plato.descripcion.toLowerCase()} data-categoria={plato.categoria?.toLowerCase() ?? ''}>
+            <div class="flex">
+              {plato.imagenUrl && <img src={plato.imagenUrl} alt={plato.nombre} class="w-24 h-24 object-cover flex-shrink-0" />}
+              <div class="p-3 flex-1">
+                <div class="flex justify-between items-start">
+                  <h3 class="font-bold text-sm">{plato.nombre}</h3>
+                  <span class="font-bold text-sm">${plato.precioActual.toLocaleString()}</span>
+                </div>
+                <p class="text-xs opacity-70 mt-1 line-clamp-2">{plato.descripcion}</p>
+                {!plato.esDisponible && <span class="text-xs text-red-400 mt-1 block">Agotado</span>}
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <!-- Ofertas del día -->
+    {ofertas.length > 0 && (
+      <div class="mb-6">
+        <h2 class="text-xl font-bold mb-3">Ofertas</h2>
+        <div class="space-y-2">
+          {ofertas.map((oferta: any) => (
+            <div class="rounded-lg p-3" style="background-color: var(--color-secundario);">
+              <h3 class="font-bold text-sm">{oferta.titulo}</h3>
+              <p class="text-xs opacity-70">{oferta.descripcion}</p>
+              <p class="text-xs opacity-50 mt-1">
+                {['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][oferta.diaSemana]} {oferta.horaInicio} - {oferta.horaFin}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- Convenios con tarjeta -->
+    {convenios.length > 0 && (
+      <div class="mb-6">
+        <h2 class="text-xl font-bold mb-3">Descuentos con tarjeta</h2>
+        <div class="space-y-2">
+          {convenios.map((conv: any) => (
+            <div class="rounded-lg p-3 flex justify-between items-center" style="background-color: var(--color-secundario);">
+              <div>
+                <h3 class="font-bold text-sm">{conv.nombreTarjeta}</h3>
+                <p class="text-xs opacity-70">{conv.descripcion}</p>
+              </div>
+              <span class="font-bold text-lg">{conv.porcentajeDescuento}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- Llamar al mozo -->
+    <div class="fixed bottom-6 right-6">
+      <button
+        id="btn-mozo"
+        class="rounded-full px-6 py-3 font-bold shadow-lg text-white"
+        style="background-color: var(--color-secundario);"
+        data-mesa-id={acceso.numeroMesa}
+        data-api={API_URL}
+      >
+        Llamar al mozo
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const buscar = document.getElementById('buscar') as HTMLInputElement;
+    const cards = document.querySelectorAll('.plato-card');
+    const catBtns = document.querySelectorAll('.categoria-btn');
+    let categoriaActiva = 'todas';
+
+    buscar?.addEventListener('input', filtrar);
+    catBtns.forEach(btn => btn.addEventListener('click', () => {
+      categoriaActiva = (btn as HTMLElement).dataset.cat ?? 'todas';
+      catBtns.forEach(b => b.classList.toggle('opacity-60', b !== btn));
+      btn.classList.remove('opacity-60');
+      filtrar();
+    }));
+
+    function filtrar() {
+      const texto = buscar?.value.toLowerCase() ?? '';
+      cards.forEach(card => {
+        const el = card as HTMLElement;
+        const nombre = el.dataset.nombre ?? '';
+        const desc = el.dataset.descripcion ?? '';
+        const cat = el.dataset.categoria ?? '';
+        const matchTexto = !texto || nombre.includes(texto) || desc.includes(texto);
+        const matchCat = categoriaActiva === 'todas' || cat === categoriaActiva.toLowerCase();
+        el.style.display = matchTexto && matchCat ? '' : 'none';
+      });
+    }
+
+    document.getElementById('btn-mozo')?.addEventListener('click', async (e) => {
+      const btn = e.target as HTMLElement;
+      const api = btn.dataset.api;
+      btn.textContent = 'Llamando...';
+      btn.setAttribute('disabled', 'true');
+      try {
+        await fetch(`${api}/llamada-mozo/${btn.dataset.mesaId}`, { method: 'POST' });
+        btn.textContent = 'Mozo llamado!';
+        setTimeout(() => { btn.textContent = 'Llamar al mozo'; btn.removeAttribute('disabled'); }, 5000);
+      } catch {
+        btn.textContent = 'Error - reintentar';
+        btn.removeAttribute('disabled');
+      }
+    });
+  </script>
+</CartaLayout>

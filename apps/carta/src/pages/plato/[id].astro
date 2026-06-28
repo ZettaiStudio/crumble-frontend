@@ -1,0 +1,89 @@
+---
+import CartaLayout from '../../layouts/CartaLayout.astro';
+
+const API_URL = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5000/api';
+const { id } = Astro.params;
+const token = Astro.url.searchParams.get('t');
+
+if (!token) return Astro.redirect('/');
+
+const platoRes = await fetch(`${API_URL}/platos/${id}`);
+if (!platoRes.ok) return Astro.redirect(`/carta?t=${token}`);
+const plato = await platoRes.json();
+
+const accesoRes = await fetch(`${API_URL}/qr/validar/${token}`);
+const acceso = await accesoRes.json();
+if (!acceso.valido) return Astro.redirect('/?error=token-invalido');
+
+const personalizacionRes = await fetch(`${API_URL}/personalizacion-carta/${acceso.sucursalId}`);
+const personalizacion = await personalizacionRes.json();
+---
+
+<CartaLayout
+  title={plato.nombre}
+  colorPrimario={personalizacion.colorPrimario}
+  colorSecundario={personalizacion.colorSecundario}
+  colorTexto={personalizacion.colorTexto}
+  fuenteTitulos={personalizacion.fuenteTitulos}
+  fuenteCuerpo={personalizacion.fuenteCuerpo}
+>
+  <div class="max-w-lg mx-auto">
+    <!-- Imagen principal -->
+    {plato.imagenUrl && (
+      <div class="relative">
+        <img src={plato.imagenUrl} alt={plato.nombre} class="w-full h-64 object-cover" />
+        <a href={`/carta?t=${token}`} class="absolute top-4 left-4 rounded-full w-10 h-10 flex items-center justify-center bg-black/50 text-white">
+          &larr;
+        </a>
+      </div>
+    )}
+
+    {!plato.imagenUrl && (
+      <div class="p-4">
+        <a href={`/carta?t=${token}`} class="opacity-60">&larr; Volver a la carta</a>
+      </div>
+    )}
+
+    <div class="px-4 py-6">
+      <!-- Nombre y precio -->
+      <div class="flex justify-between items-start mb-4">
+        <h1 class="text-2xl font-bold">{plato.nombre}</h1>
+        <span class="text-2xl font-bold">${plato.precioActual.toLocaleString()}</span>
+      </div>
+
+      <!-- Badges -->
+      <div class="flex gap-2 mb-4 flex-wrap">
+        {plato.categoria && (
+          <span class="px-2 py-1 rounded-full text-xs" style="background-color: var(--color-secundario);">{plato.categoria}</span>
+        )}
+        {plato.esSugerenciaDelDia && (
+          <span class="px-2 py-1 rounded-full text-xs bg-yellow-600/30 text-yellow-300">Sugerencia del día</span>
+        )}
+        {plato.esSugerenciaDelChef && (
+          <span class="px-2 py-1 rounded-full text-xs bg-purple-600/30 text-purple-300">Sugerencia del chef</span>
+        )}
+        {!plato.esDisponible && (
+          <span class="px-2 py-1 rounded-full text-xs bg-red-600/30 text-red-300">Agotado</span>
+        )}
+      </div>
+
+      <!-- Descripción -->
+      <p class="opacity-80 mb-6">{plato.descripcion}</p>
+
+      <!-- Datos nutricionales -->
+      {plato.datosNutricionales && (
+        <div class="rounded-lg p-4 mb-6" style="background-color: var(--color-secundario);">
+          <h3 class="font-bold text-sm mb-2">Información nutricional</h3>
+          <p class="text-sm opacity-70">{plato.datosNutricionales}</p>
+        </div>
+      )}
+
+      <!-- Historial de precios (último) -->
+      {plato.historialPrecios.length > 1 && (
+        <p class="text-xs opacity-40">
+          Precio anterior: ${plato.historialPrecios[plato.historialPrecios.length - 2].precio.toLocaleString()}
+        </p>
+      )}
+    </div>
+  </div>
+</CartaLayout>

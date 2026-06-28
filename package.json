@@ -5,7 +5,9 @@
     "dev:carta": "pnpm --filter @crumble/carta dev",
     "dev:backoffice": "pnpm --filter @crumble/backoffice dev",
     "build:carta": "pnpm --filter @crumble/carta build",
+    "dev:admin": "pnpm --filter @crumble/admin dev",
     "build:backoffice": "pnpm --filter @crumble/backoffice build",
+    "build:admin": "pnpm --filter @crumble/admin build",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint"
   },

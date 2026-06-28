@@ -1,0 +1,13 @@
+{
+  "name": "crumble-frontend",
+  "private": true,
+  "scripts": {
+    "dev:carta": "pnpm --filter @crumble/carta dev",
+    "dev:backoffice": "pnpm --filter @crumble/backoffice dev",
+    "build:carta": "pnpm --filter @crumble/carta build",
+    "build:backoffice": "pnpm --filter @crumble/backoffice build",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

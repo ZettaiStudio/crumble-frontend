@@ -32,6 +32,7 @@ const sugerenciasChef = platos.filter((p: any) => p.esSugerenciaDelChef);
 
 const formatPrice = (n: number) => n.toLocaleString('es-AR');
 const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const isVideo = (url?: string | null) => !!url && /\.(mp4|webm)$/i.test(url);
 ---
 
 <CartaLayout
@@ -96,7 +97,7 @@ const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábad
         {sugerenciasDia.map((p: any) => (
           <a href={`/plato/${p.id}?t=${token}`} class="hero-card plato-card" data-nombre={p.nombre.toLowerCase()} data-descripcion={p.descripcion.toLowerCase()} data-categoria={p.categoria?.toLowerCase() ?? ''}>
             <div class="hero-img-wrap">
-              <img src={p.imagenUrl} alt={p.nombre} class="hero-img" loading="lazy" />
+              {isVideo(p.imagenUrl) ? <video src={p.imagenUrl} class="hero-img" autoplay loop muted playsinline /> : <img src={p.imagenUrl} alt={p.nombre} class="hero-img" loading="lazy" />}
               <div class="hero-badge">Del Día</div>
             </div>
             <div class="hero-info">
@@ -119,7 +120,7 @@ const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábad
         </div>
         {sugerenciasChef.map((p: any) => (
           <a href={`/plato/${p.id}?t=${token}`} class="chef-card plato-card" data-nombre={p.nombre.toLowerCase()} data-descripcion={p.descripcion.toLowerCase()} data-categoria={p.categoria?.toLowerCase() ?? ''}>
-            <img src={p.imagenUrl} alt={p.nombre} class="chef-img" loading="lazy" />
+            {isVideo(p.imagenUrl) ? <video src={p.imagenUrl} class="chef-img" autoplay loop muted playsinline /> : <img src={p.imagenUrl} alt={p.nombre} class="chef-img" loading="lazy" />}
             <div class="chef-info">
               <div class="chef-badge">Chef</div>
               <h3 class="chef-title">{p.nombre}</h3>
@@ -143,7 +144,7 @@ const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábad
           {platos.filter((p: any) => p.categoria === cat).map((p: any) => (
             <a href={`/plato/${p.id}?t=${token}`} class="plato-item plato-card" data-nombre={p.nombre.toLowerCase()} data-descripcion={p.descripcion.toLowerCase()} data-categoria={p.categoria?.toLowerCase() ?? ''}>
               <div class="plato-thumb-wrap">
-                <img src={p.imagenUrl} alt={p.nombre} class="plato-thumb" loading="lazy" />
+                {isVideo(p.imagenUrl) ? <video src={p.imagenUrl} class="plato-thumb" autoplay loop muted playsinline /> : <img src={p.imagenUrl} alt={p.nombre} class="plato-thumb" loading="lazy" />}
               </div>
               <div class="plato-info">
                 <h4 class="plato-name">{p.nombre}</h4>
@@ -213,7 +214,7 @@ const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábad
     </footer>
 
     <!-- Llamar al mozo -->
-    <button id="btn-mozo" class="mozo-btn" data-api={API_URL} data-mesa-id={acceso.numeroMesa}>
+    <button id="btn-mozo" class="mozo-btn" data-api={API_URL} data-sucursal-id={sucursalId} data-mesa-id={acceso.numeroMesa}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mozo-icon"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       <span class="mozo-text">Llamar al mozo</span>
     </button>
@@ -625,9 +626,38 @@ const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábad
     const cards = document.querySelectorAll('.plato-card');
     const catBtns = document.querySelectorAll('.cat-pill');
     const catSections = document.querySelectorAll('.cat-section');
+    const mozoBtn = document.getElementById('btn-mozo') as HTMLElement;
+    const API = mozoBtn?.dataset.api ?? 'http://localhost:5000/api';
+    const SUCURSAL_ID = mozoBtn?.dataset.sucursalId;
     let categoriaActiva = 'todas';
 
-    buscar?.addEventListener('input', filtrar);
+    function trackear(tipoEvento: string, referenciaId: string | null = null, metadata: string | null = null) {
+      if (!SUCURSAL_ID) return;
+      fetch(`${API}/metricas/evento`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sucursalId: SUCURSAL_ID, tipoEvento, referenciaId, metadata }),
+      }).catch(() => {});
+    }
+
+    // Registrar scan QR al cargar
+    trackear('scan_qr');
+
+    // Filtro + tracking de búsqueda (debounced, dispara al detenerse 1.5s, mín 2 chars)
+    let searchTimer: ReturnType<typeof setTimeout>;
+    let lastQuery = '';
+    buscar?.addEventListener('input', () => {
+      filtrar();
+      const q = buscar.value.trim();
+      clearTimeout(searchTimer);
+      if (q.length >= 2 && q !== lastQuery) {
+        searchTimer = setTimeout(() => {
+          lastQuery = q;
+          trackear('busqueda_carta', null, q);
+        }, 1500);
+      }
+    });
+
     catBtns.forEach(btn => btn.addEventListener('click', () => {
       categoriaActiva = (btn as HTMLElement).dataset.cat ?? 'todas';
       catBtns.forEach(b => b.classList.remove('active'));
@@ -657,7 +687,7 @@ const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábad
       });
     }
 
-    document.getElementById('btn-mozo')?.addEventListener('click', async (e) => {
+    mozoBtn?.addEventListener('click', async (e) => {
       const btn = e.currentTarget as HTMLElement;
       const api = btn.dataset.api;
       const text = btn.querySelector('.mozo-text') as HTMLElement;
@@ -665,6 +695,7 @@ const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábad
       btn.classList.add('called');
       try {
         await fetch(`${api}/llamada-mozo/${btn.dataset.mesaId}`, { method: 'POST' });
+        trackear('llamada_mozo');
         text.textContent = 'Mozo notificado';
         setTimeout(() => { text.textContent = 'Llamar al mozo'; btn.classList.remove('called'); }, 5000);
       } catch {
